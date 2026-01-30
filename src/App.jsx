@@ -18,7 +18,8 @@ import InstructorPage from './pages/InstructorPage';
 import Round2Page from './pages/Round2Page';
 import AdminDashboard from './pages/AdminDashboard';
 
-const socket = io('http://localhost:5000');
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const socket = io(API_URL);
 
 const App = () => {
   const [activeDashboard, setActiveDashboard] = useState(null); // 'user' or 'admin'
@@ -56,7 +57,7 @@ const App = () => {
     if (!teamName) return;
 
     try {
-      const resp = await fetch('http://localhost:5000/api/check-team', {
+      const resp = await fetch(`${API_URL}/api/check-team`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ teamName })
@@ -77,7 +78,7 @@ const App = () => {
     e.preventDefault();
     const password = e.target.password.value;
     try {
-      const resp = await fetch('http://localhost:5000/api/login', {
+      const resp = await fetch(`${API_URL}/api/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ teamName: authTeamName, password })
@@ -118,7 +119,7 @@ const App = () => {
     };
 
     try {
-      const resp = await fetch('http://localhost:5000/api/register', {
+      const resp = await fetch(`${API_URL}/api/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
@@ -142,7 +143,7 @@ const App = () => {
 
   const fetchLeaderboard = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/leaderboard');
+      const response = await fetch(`${API_URL}/api/leaderboard`);
       const data = await response.json();
       setLeaderboard(data);
     } catch (err) { console.error(err); }

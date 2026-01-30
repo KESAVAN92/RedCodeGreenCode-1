@@ -9,14 +9,23 @@ require('dotenv').config();
 
 const app = express();
 const server = http.createServer(app);
+
+// CORS and Socket.IO configuration
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://redcode-greencode.vercel.app',
+  process.env.APPLICATION_URL
+].filter(Boolean);
+
 const io = new Server(server, {
     cors: {
-        origin: "*",
+        origin: allowedOrigins,
         methods: ["GET", "POST"]
     }
 });
 
-app.use(cors());
+app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 
 // --- DATABASE STATE ---

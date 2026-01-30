@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: redcode-backend
+    runtime: node
+    buildCommand: cd server && npm install
+    startCommand: cd server && npm start
+    envVars:
+      - key: PORT
+        value: 5000
+      - key: MONGODB_URI
+        fromDatabase:
+          name: redcode-mongodb
+          property: connectionString
+      - key: APPLICATION_URL
+        value: https://redcode-greencode.vercel.app
+
+databases:
+  - name: redcode-mongodb
+    databaseName: redcode
+    plan: free

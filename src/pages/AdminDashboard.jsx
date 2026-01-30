@@ -1,12 +1,14 @@
 import React from 'react';
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 const AdminDashboard = ({ socket, isRedCode }) => {
     const [leaderboard, setLeaderboard] = React.useState([]);
 
     React.useEffect(() => {
         const fetchLeaderboard = async () => {
             try {
-                const res = await fetch('http://localhost:5000/api/leaderboard');
+                const res = await fetch(`${API_URL}/api/leaderboard`);
                 const data = await res.json();
                 setLeaderboard(data);
             } catch (err) { console.error(err); }
