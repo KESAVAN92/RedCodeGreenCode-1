@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SequencePuzzle, AdvancedWirePuzzle, SymbolPuzzle, GridNumberPuzzle, MorseSymbolPuzzle, MemoryPuzzle } from '../components/Round1Puzzles';
-import { Heart } from 'lucide-react';
+import { AdvancedWirePuzzle, SymbolPuzzle, GridNumberPuzzle, MorseSymbolPuzzle, MemoryPuzzle } from '../components/Round1Puzzles';
+import { Heart, HeartOff } from 'lucide-react';
 
 const DefuserPage = ({
     teamData,
@@ -10,9 +10,12 @@ const DefuserPage = ({
     handleScrewClick,
     setCurrentView,
     submitPuzzleResult,
+    selectModule,
     isRedCode
 }) => {
     const [timeLeft, setTimeLeft] = useState(600); // 10 minutes default
+    const [showHeartBreak, setShowHeartBreak] = useState(false);
+    const [prevLives, setPrevLives] = useState(teamData?.round1?.lives || 3);
     const gameStatus = teamData?.round1?.status;
 
     useEffect(() => {
@@ -32,6 +35,15 @@ const DefuserPage = ({
         return () => clearInterval(interval);
     }, [teamData?.round1?.startTime]);
 
+    useEffect(() => {
+        const currentLives = teamData?.round1?.lives;
+        if (currentLives < prevLives) {
+            setShowHeartBreak(true);
+            setTimeout(() => setShowHeartBreak(false), 2000);
+        }
+        setPrevLives(currentLives);
+    }, [teamData?.round1?.lives]);
+
     const formatTime = (seconds) => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
@@ -49,7 +61,6 @@ const DefuserPage = ({
         };
         switch (puzzle.puzzleType) {
             case 'grid_number': return <GridNumberPuzzle {...props} />;
-            case 'sequence': return <SequencePuzzle {...props} />;
             case 'symbols': return <SymbolPuzzle {...props} />;
             case 'advanced_wires': return <AdvancedWirePuzzle {...props} />;
             case 'morse_symbols': return <MorseSymbolPuzzle {...props} />;
@@ -111,10 +122,25 @@ const DefuserPage = ({
                                     >
                                         {puzzle.solved ? (
                                             <div className="module-solved-overlay">
+                                                <motion.div
+                                                    initial={{ scaleX: 0 }}
+                                                    animate={{ scaleX: 1 }}
+                                                    transition={{ duration: 0.5, ease: "circOut" }}
+                                                    className="module-hatch-left"
+                                                />
+                                                <motion.div
+                                                    initial={{ scaleX: 0 }}
+                                                    animate={{ scaleX: 1 }}
+                                                    transition={{ duration: 0.5, ease: "circOut" }}
+                                                    className="module-hatch-right"
+                                                />
                                                 <div className="solved-seal">SOLVED</div>
                                             </div>
                                         ) : (
-                                            renderPuzzle(puzzle, i)
+                                            <>
+                                                <div className="module-tag">{String.fromCharCode(65 + i)}</div>
+                                                {renderPuzzle(puzzle, i)}
+                                            </>
                                         )}
                                     </div>
                                 ))}
@@ -138,6 +164,31 @@ const DefuserPage = ({
                 )}
             </AnimatePresence>
             {isRedCode && <div className="red-overlay"><div className="freeze-text">FREEZE</div></div>}
+
+            <AnimatePresence>
+                {showHeartBreak && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.5 }}
+                        animate={{ opacity: 1, scale: 1.2 }}
+                        exit={{ opacity: 0, scale: 2 }}
+                        style={{
+                            position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            zIndex: 1000, pointerEvents: 'none', background: 'rgba(255,0,0,0.1)'
+                        }}
+                    >
+                        <motion.div
+                            animate={{
+                                x: [0, -10, 10, -10, 10, 0],
+                                rotate: [0, -5, 5, -5, 5, 0]
+                            }}
+                            transition={{ duration: 0.5 }}
+                        >
+                            <HeartOff size={200} color="#ff3c3c" strokeWidth={3} />
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };

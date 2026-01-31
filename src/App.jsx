@@ -300,9 +300,8 @@ const App = () => {
           )}
           {currentView === 'round2' && (
             <Round2Page
-              activeDashboard={activeDashboard}
-              authStep={authStep}
-              handleLogout={handleLogout}
+              teamData={teamData}
+              socket={socket}
               setCurrentView={setCurrentView}
             />
           )}

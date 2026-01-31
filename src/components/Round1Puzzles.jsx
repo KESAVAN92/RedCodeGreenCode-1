@@ -1,26 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export const SequencePuzzle = ({ onSolved, onFailed, data }) => (
-    <div className="button-grid-3x4">
-        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => {
-            let color = 'yellow'; if (n <= 4) color = 'red'; else if (n > 8) color = 'green';
-            return <div key={n} className={`bomb-btn-round ${color}`} onClick={() => {
-                if (!data?.pattern) return;
-                n === data.pattern[0] ? onSolved() : onFailed();
-            }} />;
-        })}
-    </div>
-);
-
-export const SequenceManual = ({ data }) => (
-    <div className="manual">
-        <h3>MODULE A1: BUTTON PROTOCOL</h3>
-        <p>Press the button in position:</p>
-        <h1 style={{ color: '#00ff66', fontSize: '4rem' }}>{data.pattern[0]}</h1>
-    </div>
-);
-
 export const AdvancedWirePuzzle = ({ onSolved, onFailed, data }) => {
     const [cut, setCut] = useState([]);
     const wires = data?.wires || ['red', 'blue', 'yellow', 'white', 'black'];
@@ -157,19 +137,16 @@ const MORSE_MAP = {
     '9': '----.', '0': '-----'
 };
 
-// Simplified Symbols (using distinct unicode/chars to represent the complex ones)
 const SYMBOL_REPS = {
     'A': 'ᚦ', 'B': '◈', 'C': '⊞', 'D': '▼', 'E': '▣', 'F': '◬', 'G': '◍', 'H': '⌬', 'I': '⧉',
     'J': '⫽', 'K': '⋔', 'L': '⩔', 'M': '⩖', 'N': '⩓', 'O': '⚙', 'P': '⚯', 'Q': '⚔', 'R': '⚖',
-    'S': '⚓', 'T': '☠', 'U': '☢', 'V': '⚛', 'W': '☣', 'X': '☤', 'Y': '☯', 'Z': '☸', '1': '➊',
-    '2': '➋', '3': '➌', '4': '➍', '5': '➎', '6': '➏', '7': '➐', '8': '➑', '9': '➒', '0': '⓿'
+    'S': '⚓', 'T': '☠', 'U': '☢', 'V': '⚛', 'W': '☣', 'X': '☤', 'Y': '☯', 'Z': '☸',
+    '1': '⫷', '2': '⫸', '3': '⫹', '4': '⫺', '5': '⫻', '6': '⫼', '7': '⫽', '8': '⫾', '9': '⫿', '0': '⬟'
 };
 
 export const MorseSymbolPuzzle = ({ onSolved, onFailed, data }) => {
     const [selections, setSelections] = useState([0, 0, 0, 0, 0]);
     const targetWord = data.word || "ABCDE";
-
-    const morseWord = targetWord.split('').map(char => MORSE_MAP[char]).join('   ');
 
     const handleScroll = (idx, dir) => {
         const newSels = [...selections];
@@ -185,14 +162,15 @@ export const MorseSymbolPuzzle = ({ onSolved, onFailed, data }) => {
 
     return (
         <div className="morse-symbols-module">
-            <div className="morse-ticker">
-                <div className="ticker-content">{morseWord} &nbsp;&nbsp;&nbsp; {morseWord}</div>
-            </div>
-
             <div className="selectors-row">
                 {selections.map((sel, i) => (
                     <div key={i} className="symbol-selector">
                         <button className="scroll-btn up" onClick={(e) => { e.stopPropagation(); handleScroll(i, -1); }}>▲</button>
+
+                        <div className="morse-strip" title="SECURE_KEY">
+                            {MORSE_MAP[targetWord[i]]}
+                        </div>
+
                         <div
                             className="symbol-display"
                             onClick={(e) => { e.stopPropagation(); handleScroll(i, 1); }}

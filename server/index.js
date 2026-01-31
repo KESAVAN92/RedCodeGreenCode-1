@@ -42,12 +42,70 @@ const playerSchema = new mongoose.Schema({
             data: mongoose.Schema.Types.Mixed
         }]
     },
-    round2Progress: { code: { type: String, default: '' }, status: { type: String, default: 'waiting' } },
+    round2Progress: {
+        problems: [{
+            id: String,
+            title: String,
+            description: String,
+            buggyCode: String,
+            language: String,
+            solutionId: String, // Regex or key fix to also check against
+            testCases: [{ input: String, expected: String, isPublic: Boolean }],
+            solved: { type: Boolean, default: false },
+            attempts: { type: Number, default: 0 },
+            score: { type: Number, default: 0 }
+        }],
+        currentProblemIndex: { type: Number, default: 0 },
+        status: { type: String, default: 'waiting' }
+    },
+    round2Marks: { bugId: { type: Number, default: 0 }, coord: { type: Number, default: 0 } },
+    round2ManualScore: { type: Number, default: 0 },
     score: { type: Number, default: 0 },
     registrationTime: { type: Date, default: Date.now }
 });
 
 const Player = mongoose.model('Player', playerSchema);
+
+// --- ROUND 2 PROBLEMS ---
+const ROUND_2_PROBLEMS = [
+    {
+        id: "p1",
+        title: "The Faulty Summation",
+        language: "python",
+        description: "The following code is supposed to calculate the sum of all even numbers in a list, but it fails for some inputs. Find and fix the bug.",
+        buggyCode: "def sum_evens(nums):\n    total = 0\n    for n in nums:\n        if n % 2 == 1: # BUG HERE\n            total += n\n    return total",
+        testCases: [
+            { input: "[1, 2, 3, 4]", expected: "6", isPublic: true },
+            { input: "[10, 15, 20]", expected: "30", isPublic: false }
+        ]
+    },
+    {
+        id: "p2",
+        title: "Palindrome Paradox",
+        language: "cpp",
+        description: "A C++ function to check if a string is a palindrome. It seems to miss the middle character check or fails on case sensitivity. Fix it to be case-insensitive.",
+        buggyCode: "#include <iostream>\n#include <string>\n#include <algorithm>\n\nbool isPalindrome(std::string s) {\n    std::string rev = s;\n    std::reverse(rev.begin(), rev.end());\n    return s == rev;\n}",
+        testCases: [
+            { input: "Racecar", expected: "true", isPublic: true },
+            { input: "level", expected: "true", isPublic: false }
+        ]
+    },
+    {
+        id: "p3",
+        title: "Array Index out of Bounds",
+        language: "java",
+        description: "This Java snippet finds the maximum value in an array. It crashes with an exception. Locate the boundary error.",
+        buggyCode: "public class Solution {\n    public static int findMax(int[] arr) {\n        int max = arr[0];\n        for (int i = 0; i <= arr.length; i++) {\n            if (arr[i] > max) max = arr[i];\n        }\n        return max;\n    }\n}",
+        testCases: [
+            { input: "[1, 5, 3]", expected: "5", isPublic: true },
+            { input: "[-10, 0, -5]", expected: "0", isPublic: false }
+        ]
+    }
+];
+
+const generateRound2 = () => {
+    return ROUND_2_PROBLEMS.map(p => ({ ...p, solved: false, attempts: 0, score: 0 }));
+};
 
 // --- HELPERS ---
 const ACCORDING_TO_NUMBER_PATTERNS = {
@@ -145,10 +203,14 @@ app.post('/api/register', async (req, res) => {
             round1Progress: {
                 puzzles: generatePuzzles(),
                 currentPuzzle: 0,
-                selectedModuleIndex: 0,
+                selectedModuleIndex: -1,
                 roleSelection: { member1: null, member2: null },
                 lives: 3,
                 status: 'active'
+            },
+            round2Progress: {
+                problems: generateRound2(),
+                status: 'waiting'
             }
         };
 
@@ -162,6 +224,23 @@ app.post('/api/register', async (req, res) => {
             res.status(201).json({ message: 'DB Reg OK', player: newPlayer });
         }
     } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+const axios = require('axios');
+app.post('/api/execute', async (req, res) => {
+    const { language, code, stdin } = req.body;
+    const langMap = { 'python': 'python3', 'c': 'c', 'cpp': 'cpp', 'java': 'java' };
+    try {
+        const response = await axios.post('https://emkc.org/api/v2/piston/execute', {
+            language: langMap[language] || language,
+            version: "*",
+            files: [{ content: code }],
+            stdin: stdin || ""
+        });
+        res.json(response.data);
+    } catch (err) {
+        res.status(500).json({ error: 'Execution failed' });
+    }
 });
 
 app.get('/api/leaderboard', async (req, res) => {
@@ -219,10 +298,17 @@ io.on('connection', (socket) => {
             if (success) {
                 if (!player.round1Progress.puzzles[puzzleIndex].solved) {
                     player.round1Progress.puzzles[puzzleIndex].solved = true;
+                    player.round1Progress.selectedModuleIndex = -1; // Auto-zoom out on solve
+
+                    // Increment Score
+                    player.score = (player.score || 0) + 100;
+
                     // Count how many are solved
                     const solvedCount = player.round1Progress.puzzles.filter(p => p.solved).length;
                     if (solvedCount >= player.round1Progress.puzzles.length) {
                         player.round1Progress.status = 'completed';
+                        // Bonus for completion?
+                        player.score += 200;
                     }
                 }
             } else {
@@ -243,8 +329,59 @@ io.on('connection', (socket) => {
                     }
                 }
             }
-            if (!useMemoryFallback) await Player.findByIdAndUpdate(player._id, { round1Progress: player.round1Progress });
+            if (!useMemoryFallback) await Player.findByIdAndUpdate(player._id, {
+                round1Progress: player.round1Progress,
+                score: player.score
+            });
             io.to(teamId).emit('teamUpdate', player);
+            const allPlayers = useMemoryFallback ? playersMemory : await Player.find({});
+            io.emit('adminLeaderboardUpdate', allPlayers);
+        }
+    });
+
+    socket.on('solveRound2Problem', async ({ teamId, problemIndex, code }) => {
+        const player = await findTeam(teamId);
+        if (player) {
+            const prob = player.round2Progress.problems[problemIndex];
+            if (prob && !prob.solved) {
+                prob.solved = true;
+                prob.score = 100;
+                player.score = (player.score || 0) + 100;
+
+                const allSolved = player.round2Progress.problems.every(p => p.solved);
+                if (allSolved) {
+                    player.round2Progress.status = 'completed';
+                    player.score += 500; // Large bonus for finishing Round 2
+                }
+
+                if (!useMemoryFallback) await Player.findByIdAndUpdate(player._id, {
+                    round2Progress: player.round2Progress,
+                    score: player.score
+                });
+                io.to(teamId).emit('teamUpdate', player);
+                const allPlayers = useMemoryFallback ? playersMemory : await Player.find({});
+                io.emit('adminLeaderboardUpdate', allPlayers);
+            }
+        }
+    });
+
+    socket.on('awardRound2Marks', async ({ teamId, type, value }) => {
+        const player = await findTeam(teamId);
+        if (player) {
+            if (!player.round2Marks) player.round2Marks = { bugId: 0, coord: 0 };
+            player.round2Marks[type] = value;
+
+            // Recalculate Total Score: Fixed (Round 1) + Coding (Round 2) + Manual (Round 2)
+            // Round 1 Score is already persisted in player.score but we should be careful
+            // For simplicity, let's just make score additive
+
+            player.round2ManualScore = (player.round2Marks.bugId || 0) + (player.round2Marks.coord || 0);
+
+            if (!useMemoryFallback) await Player.findByIdAndUpdate(player._id, {
+                round2Marks: player.round2Marks,
+                round2ManualScore: player.round2ManualScore
+            });
+
             const allPlayers = useMemoryFallback ? playersMemory : await Player.find({});
             io.emit('adminLeaderboardUpdate', allPlayers);
         }
@@ -269,7 +406,7 @@ io.on('connection', (socket) => {
             player.round1Progress = {
                 puzzles: generatePuzzles(),
                 currentPuzzle: 0,
-                selectedModuleIndex: 0,
+                selectedModuleIndex: -1,
                 roleSelection: { member1: null, member2: null },
                 lives: 3,
                 status: 'active',
