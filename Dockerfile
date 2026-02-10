@@ -14,7 +14,7 @@ RUN npm install
 COPY . .
 
 # Expose port (Cloud Run uses PORT env var)
-EXPOSE 5000
+EXPOSE 8000
 
 # Start server
 CMD ["npm", "start"]
