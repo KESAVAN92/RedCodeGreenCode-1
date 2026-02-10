@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bomb, Shield } from 'lucide-react';
+import { Bomb, Shield, Lock } from 'lucide-react';
 import io from 'socket.io-client';
 import './App.css';
 import './NewStyles.css';

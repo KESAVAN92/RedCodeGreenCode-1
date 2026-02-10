@@ -319,10 +319,59 @@ io.on('connection', (socket) => {
         if (action === 'start') {
             globalGameState[rKey].isStarted = true;
             globalGameState[rKey].isPaused = false;
+
+            const now = new Date();
+            const players = useMemoryFallback ? memoryPlayers : await Player.find({});
+
+            for (let p of players) {
+                const progress = round === 1 ? p.round1Progress : p.round2Progress;
+                // Only set start time if not already set or if status is waiting?
+                // User said "when admin starts... 10 mins start for everyone". 
+                // This implies a synchronized start.
+                if (!progress.startTime) {
+                    progress.startTime = now;
+                    progress.status = 'active';
+
+                    if (!useMemoryFallback) {
+                        await Player.findByIdAndUpdate(p._id, {
+                            [round === 1 ? 'round1Progress' : 'round2Progress']: progress
+                        });
+                    }
+                }
+            }
+            // Broadcast updates
+            for (let p of players) {
+                io.to(p._id.toString()).emit('teamUpdate', p);
+            }
         } else if (action === 'pause') {
             globalGameState[rKey].isPaused = true;
+            globalGameState[rKey].pauseStartTime = new Date();
         } else if (action === 'resume') {
             globalGameState[rKey].isPaused = false;
+            if (globalGameState[rKey].pauseStartTime) {
+                const pauseDuration = new Date().getTime() - new Date(globalGameState[rKey].pauseStartTime).getTime();
+                const players = useMemoryFallback ? memoryPlayers : await Player.find({});
+
+                for (let p of players) {
+                    const progress = round === 1 ? p.round1Progress : p.round2Progress;
+                    if (progress.status === 'active' && progress.startTime) {
+                        const originalStart = new Date(progress.startTime).getTime();
+                        progress.startTime = new Date(originalStart + pauseDuration);
+
+                        if (!useMemoryFallback) {
+                            await Player.findByIdAndUpdate(p._id, {
+                                [round === 1 ? 'round1Progress' : 'round2Progress']: progress
+                            });
+                        }
+                    }
+                }
+                globalGameState[rKey].pauseStartTime = null; // Reset
+
+                // Broadcast updates
+                for (let p of players) {
+                    io.to(p._id.toString()).emit('teamUpdate', p);
+                }
+            }
         } else if (action === 'stop') {
             globalGameState[rKey].isStarted = false;
             globalGameState[rKey].isPaused = false;
@@ -493,6 +542,12 @@ io.on('connection', (socket) => {
     socket.on('submitPuzzle', async ({ teamId, puzzleIndex, success }) => {
         const player = await findTeam(teamId);
         if (player) {
+            // Safety check for valid puzzle index
+            if (!player.round1Progress || !player.round1Progress.puzzles || !player.round1Progress.puzzles[puzzleIndex]) {
+                console.error(`[ERROR] Invalid puzzle submission: teamId=${teamId}, puzzleIndex=${puzzleIndex}`);
+                return;
+            }
+
             if (success) {
                 if (!player.round1Progress.puzzles[puzzleIndex].solved) {
                     player.round1Progress.puzzles[puzzleIndex].solved = true;

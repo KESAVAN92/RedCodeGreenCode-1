@@ -24,6 +24,7 @@ const DefuserPage = ({
     useEffect(() => {
         if (!teamData?.round1?.startTime) return;
         const interval = setInterval(() => {
+            if (gameState.round1.isPaused) return;
             const start = new Date(teamData.round1.startTime).getTime();
             const now = new Date().getTime();
             const elapsed = Math.floor((now - start) / 1000);
@@ -36,7 +37,7 @@ const DefuserPage = ({
             }
         }, 1000);
         return () => clearInterval(interval);
-    }, [teamData?.round1?.startTime]);
+    }, [teamData?.round1?.startTime, gameState.round1.isPaused]);
 
     useEffect(() => {
         const currentLives = teamData?.round1?.lives;
@@ -59,8 +60,8 @@ const DefuserPage = ({
 
     const renderPuzzle = (puzzle, index) => {
         const props = {
-            onSolved: () => submitPuzzleResult(true),
-            onFailed: () => submitPuzzleResult(false),
+            onSolved: () => submitPuzzleResult(true, index),
+            onFailed: () => submitPuzzleResult(false, index),
             data: puzzle.data
         };
         switch (puzzle.puzzleType) {
@@ -116,14 +117,28 @@ const DefuserPage = ({
                                         className={`puzzle ${i === activeIndex ? 'active-module' : ''} ${puzzle.solved ? 'puzzle-done' : ''}`}
                                         onClick={(e) => {
                                             if (gameState.round1.isPaused || isRedCode) return;
+
+                                            // Special double-tap logic for 'According to Number' (grid_number)
+                                            if (puzzle.puzzleType === 'grid_number' && activeIndex !== i) {
+                                                return; // Ignore single click for this module when not zoomed
+                                            }
+
                                             if (!puzzle.solved) {
                                                 e.stopPropagation();
                                                 selectModule(i); // Always select, never unselect
                                             }
                                         }}
+                                        onDoubleClick={(e) => {
+                                            if (gameState.round1.isPaused || isRedCode) return;
+                                            // Allow double click to open 'grid_number'
+                                            if (puzzle.puzzleType === 'grid_number' && !puzzle.solved && activeIndex !== i) {
+                                                e.stopPropagation();
+                                                selectModule(i);
+                                            }
+                                        }}
                                         data-id={`MODULE_${i + 1}`}
                                         style={{
-                                            cursor: puzzle.solved ? 'default' : (activeIndex === i ? 'default' : 'zoom-in'),
+                                            cursor: puzzle.solved ? 'default' : (activeIndex === i ? 'default' : (puzzle.puzzleType === 'grid_number' ? 'pointer' : 'zoom-in')),
                                             pointerEvents: (gameState.round1.isPaused || isRedCode) ? 'none' : 'auto'
                                         }}
                                     >
@@ -145,8 +160,20 @@ const DefuserPage = ({
                                             </div>
                                         ) : (
                                             <>
-                                                <div className="module-tag">{String.fromCharCode(65 + i)}</div>
-                                                {renderPuzzle(puzzle, i)}
+                                                <div className="module-tag" style={
+                                                    (puzzle.puzzleType === 'grid_number' && activeIndex !== i)
+                                                        ? { fontSize: '4rem', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 'auto', height: 'auto', background: 'none', border: 'none' }
+                                                        : {}
+                                                }>{String.fromCharCode(65 + i)}</div>
+
+                                                {/* Hide grid_number content until active */}
+                                                <div style={{
+                                                    pointerEvents: activeIndex === i ? 'auto' : 'none',
+                                                    opacity: (puzzle.puzzleType === 'grid_number' && activeIndex !== i) ? 0 : 1,
+                                                    transition: 'opacity 0.3s'
+                                                }}>
+                                                    {renderPuzzle(puzzle, i)}
+                                                </div>
                                             </>
                                         )}
                                     </div>

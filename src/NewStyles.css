@@ -48,8 +48,8 @@
 .puzzle.active-module {
     border-color: var(--squid-mint) !important;
     box-shadow: 0 0 100px rgba(0, 255, 102, 0.7), inset 0 0 50px rgba(0, 255, 102, 0.4) !important;
-    transform: scale(1.6) translateY(-20px) translateZ(150px);
-    /* DRAMATIC 3D POP UP */
+    transform: scale(1.6) translateY(-20px);
+    /* REMOVED translateZ to fix cursor alignment issues */
     z-index: 1000;
     opacity: 1;
     filter: grayscale(0) blur(0);

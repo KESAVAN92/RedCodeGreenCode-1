@@ -20,6 +20,7 @@ const InstructorPage = ({
     useEffect(() => {
         if (!teamData?.round1?.startTime) return;
         const interval = setInterval(() => {
+            if (gameState.round1.isPaused) return;
             const start = new Date(teamData.round1.startTime).getTime();
             const now = new Date().getTime();
             const elapsed = Math.floor((now - start) / 1000);
@@ -32,7 +33,7 @@ const InstructorPage = ({
             }
         }, 1000);
         return () => clearInterval(interval);
-    }, [teamData?.round1?.startTime]);
+    }, [teamData?.round1?.startTime, gameState.round1.isPaused]);
 
     useEffect(() => {
         const currentLives = teamData?.round1?.lives;
