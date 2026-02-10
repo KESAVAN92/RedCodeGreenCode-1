@@ -670,7 +670,7 @@ app.get('/api/leaderboard', async (req, res) => {
 });
 
 // --- STARTUP ---
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 3000 })
     .then(() => {
         console.log('✅ Connected to Atlas');
