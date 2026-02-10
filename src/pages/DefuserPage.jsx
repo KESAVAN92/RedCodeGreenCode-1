@@ -118,27 +118,27 @@ const DefuserPage = ({
                                         onClick={(e) => {
                                             if (gameState.round1.isPaused || isRedCode) return;
 
-                                            // Special double-tap logic for 'According to Number' (grid_number)
-                                            if (puzzle.puzzleType === 'grid_number' && activeIndex !== i) {
-                                                return; // Ignore single click for this module when not zoomed
+                                            // Ignore single click for ALL modules when not zoomed
+                                            if (activeIndex !== i) {
+                                                return;
                                             }
 
                                             if (!puzzle.solved) {
                                                 e.stopPropagation();
-                                                selectModule(i); // Always select, never unselect
+                                                selectModule(i);
                                             }
                                         }}
                                         onDoubleClick={(e) => {
                                             if (gameState.round1.isPaused || isRedCode) return;
-                                            // Allow double click to open 'grid_number'
-                                            if (puzzle.puzzleType === 'grid_number' && !puzzle.solved && activeIndex !== i) {
+                                            // Allow double click to open any module
+                                            if (!puzzle.solved && activeIndex !== i) {
                                                 e.stopPropagation();
                                                 selectModule(i);
                                             }
                                         }}
                                         data-id={`MODULE_${i + 1}`}
                                         style={{
-                                            cursor: puzzle.solved ? 'default' : (activeIndex === i ? 'default' : (puzzle.puzzleType === 'grid_number' ? 'pointer' : 'zoom-in')),
+                                            cursor: puzzle.solved ? 'default' : (activeIndex === i ? 'default' : 'pointer'),
                                             pointerEvents: (gameState.round1.isPaused || isRedCode) ? 'none' : 'auto'
                                         }}
                                     >
@@ -161,15 +161,15 @@ const DefuserPage = ({
                                         ) : (
                                             <>
                                                 <div className="module-tag" style={
-                                                    (puzzle.puzzleType === 'grid_number' && activeIndex !== i)
+                                                    (activeIndex !== i)
                                                         ? { fontSize: '4rem', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 'auto', height: 'auto', background: 'none', border: 'none' }
                                                         : {}
                                                 }>{String.fromCharCode(65 + i)}</div>
 
-                                                {/* Hide grid_number content until active */}
+                                                {/* Hide content until active */}
                                                 <div style={{
                                                     pointerEvents: activeIndex === i ? 'auto' : 'none',
-                                                    opacity: (puzzle.puzzleType === 'grid_number' && activeIndex !== i) ? 0 : 1,
+                                                    opacity: (activeIndex !== i) ? 0 : 1,
                                                     transition: 'opacity 0.3s'
                                                 }}>
                                                     {renderPuzzle(puzzle, i)}

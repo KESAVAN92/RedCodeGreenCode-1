@@ -48,33 +48,36 @@ const RoleSelectRound2 = ({
 
             <div className="role-cards" style={{ display: 'flex', gap: '2rem', zIndex: 10 }}>
                 <div className="role-card"
-                    onClick={() => selectRole('blind_coder')}
+                    onClick={() => selectRole('analyst')}
                     style={{
-                        background: currentRole === 'blind_coder' ? 'rgba(255, 60, 60, 0.1)' : '#111',
-                        border: currentRole === 'blind_coder' ? '2px solid var(--squid-pink)' : '2px solid #333',
+                        background: currentRole === 'analyst' ? 'rgba(255, 60, 60, 0.1)' : '#111',
+                        border: currentRole === 'analyst' ? '2px solid var(--squid-pink)' : '2px solid #333',
                         padding: '3rem', width: '320px', textAlign: 'center', cursor: 'pointer',
                         transition: 'all 0.3s', borderRadius: '20px',
-                        transform: currentRole === 'blind_coder' ? 'scale(1.05)' : 'scale(1)'
+                        transform: currentRole === 'analyst' ? 'scale(1.05)' : 'scale(1)'
                     }}>
-                    <Keyboard size={64} color="var(--squid-pink)" />
-                    <h3 style={{ marginTop: '1.5rem', mb: '0.5rem' }}>BLIND_CODER</h3>
-                    <p style={{ fontSize: '0.7rem', color: '#666', mb: '1rem' }}>HANDS ON KEYBOARD. EYES SHUT.</p>
-                    {currentRole === 'blind_coder' && <p className="pink-text" style={{ fontSize: '0.8rem', marginTop: '1rem', fontWeight: 900 }}>ROLE_ASSIGNED</p>}
+                    <Eye size={64} color="var(--squid-pink)" />
+                    <h3 style={{ marginTop: '1.5rem', marginBottom: '0.5rem' }}>CODE ANALYST</h3>
+                    <p style={{ fontSize: '0.7rem', color: '#666', marginBottom: '1rem' }}>ANALYZES LOGIC & PROVIDES INTEL</p>
+                    {currentRole === 'analyst' && <p className="pink-text" style={{ fontSize: '0.8rem', marginTop: '1rem', fontWeight: 900 }}>ROLE_ASSIGNED</p>}
                 </div>
 
                 <div className="role-card"
-                    onClick={() => selectRole('whisperer')}
+                    onClick={() => {
+                        selectRole('executor');
+                        window.open('https://www.hackerrank.com', '_blank');
+                    }}
                     style={{
-                        background: currentRole === 'whisperer' ? 'rgba(255, 60, 60, 0.1)' : '#111',
-                        border: currentRole === 'whisperer' ? '2px solid var(--squid-pink)' : '2px solid #333',
+                        background: currentRole === 'executor' ? 'rgba(255, 60, 60, 0.1)' : '#111',
+                        border: currentRole === 'executor' ? '2px solid var(--squid-pink)' : '2px solid #333',
                         padding: '3rem', width: '320px', textAlign: 'center', cursor: 'pointer',
                         transition: 'all 0.3s', borderRadius: '20px',
-                        transform: currentRole === 'whisperer' ? 'scale(1.05)' : 'scale(1)'
+                        transform: currentRole === 'executor' ? 'scale(1.05)' : 'scale(1)'
                     }}>
-                    <Eye size={64} color="var(--squid-pink)" />
-                    <h3 style={{ marginTop: '1.5rem', mb: '0.5rem' }}>LOGIC_WHISPERER</h3>
-                    <p style={{ fontSize: '0.7rem', color: '#666', mb: '1rem' }}>SEES THE TRUTH. GUIDES THE HAND.</p>
-                    {currentRole === 'whisperer' && <p className="pink-text" style={{ fontSize: '0.8rem', marginTop: '1rem', fontWeight: 900 }}>ROLE_ASSIGNED</p>}
+                    <Keyboard size={64} color="var(--squid-pink)" />
+                    <h3 style={{ marginTop: '1.5rem', marginBottom: '0.5rem' }}>CODE EXECUTOR</h3>
+                    <p style={{ fontSize: '0.7rem', color: '#666', marginBottom: '1rem' }}>EXECUTES CODE ON PLATFORM</p>
+                    {currentRole === 'executor' && <p className="pink-text" style={{ fontSize: '0.8rem', marginTop: '1rem', fontWeight: 900 }}>ROLE_ASSIGNED</p>}
                 </div>
             </div>
 

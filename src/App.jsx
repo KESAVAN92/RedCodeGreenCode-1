@@ -14,6 +14,7 @@ import RegisterPage from './pages/RegisterPage';
 import Dashboard from './pages/Dashboard';
 import RoleSelect from './pages/RoleSelect';
 import RoleSelectRound2 from './pages/RoleSelectRound2';
+import CodeAnalystPage from './pages/CodeAnalystPage';
 import DefuserPage from './pages/DefuserPage';
 import InstructorPage from './pages/InstructorPage';
 import Round2Page from './pages/Round2Page';
@@ -161,6 +162,16 @@ const App = () => {
     if (!teamData || !memberIdentifier) return;
     const teamId = teamData.teamId || teamData._id;
     socket.emit('selectRole', { teamId, memberIdentifier, role });
+
+    // Optimistic Update to prevent latency flicker
+    setTeamData(prev => {
+      const clone = { ...prev };
+      if (!clone.round1) clone.round1 = {};
+      if (!clone.round1.roleSelection) clone.round1.roleSelection = {};
+      clone.round1.roleSelection[memberIdentifier] = role;
+      return clone;
+    });
+
     setCurrentView('round1');
   };
 
@@ -240,16 +251,16 @@ const App = () => {
       setTeamData(prev => {
         const newData = { ...data, teamId: data._id, round1: data.round1Progress };
 
-        // Only reset box visuals if this is a BRAND NEW mission start (startTime changed)
+        // Force reset box visuals if the mission start time has changed (Resume or Restart)
         // or if we are currently closed and the server says we've solved something
-        const isFreshStart = newData.round1.startTime !== prev?.round1?.startTime;
+        const isTimeShift = newData.round1.startTime !== prev?.round1?.startTime;
         const anySolved = newData.round1.puzzles.some(p => p.solved);
 
-        if (isFreshStart && newData.round1.status === 'active' && !anySolved) {
+        if (anySolved) {
+          setIsBoxOpen(true);
+        } else if (isTimeShift && newData.round1.status === 'active') {
           setIsBoxOpen(false);
           setUnscrewed([false, false, false, false]);
-        } else if (anySolved) {
-          setIsBoxOpen(true);
         }
 
         return newData;
@@ -265,9 +276,14 @@ const App = () => {
     };
   }, []);
 
+
+
   return (
     <>
-      <Navbar activeDashboard={activeDashboard} authStep={authStep} onLogout={handleLogout} />
+      {/* HIDE NAVBAR ON INDEX PAGE (authStep === 'initial') */}
+      {(!(!activeDashboard && authStep === 'initial')) && (
+        <Navbar activeDashboard={activeDashboard} authStep={authStep} onLogout={handleLogout} />
+      )}
 
       {/* AUTH FLOW */}
       {!activeDashboard && (
@@ -376,14 +392,32 @@ const App = () => {
             </>
           )}
           {currentView === 'round2' && (
-            <Round2Page
-              teamData={teamData}
-              socket={socket}
-              memberIdentifier={memberIdentifier}
-              setCurrentView={setCurrentView}
-              gameState={gameState}
-              leaderboard={leaderboard}
-            />
+            <>
+              {teamData?.round2Progress?.roleSelection?.[memberIdentifier] === 'analyst' ? (
+                <CodeAnalystPage
+                  teamData={teamData}
+                  setCurrentView={setCurrentView}
+                />
+              ) : teamData?.round2Progress?.roleSelection?.[memberIdentifier] === 'executor' ? (
+                <div className="squid-container" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                  <img src="/bg.png" className="hero-bg-image" alt="background" />
+                  <h1 className="pink-text" style={{ fontSize: '3rem', marginBottom: '2rem' }}>CODE EXECUTOR ACTIVE</h1>
+                  <p style={{ fontSize: '1.5rem', marginBottom: '2rem' }}>Proceed to the HackerRank platform to execute code.</p>
+                  <button className="btn-squid" onClick={() => window.open('https://www.hackerrank.com', '_blank')}>OPEN PLATFORM AGAIN</button>
+                  <button className="btn-squid-secondary" onClick={() => setCurrentView('role_select_r2')} style={{ marginTop: '2rem' }}>CHANGE ROLE</button>
+                </div>
+              ) : (
+                /* Fallback to old portal if needed or just show the new logic */
+                <Round2Page
+                  teamData={teamData}
+                  socket={socket}
+                  memberIdentifier={memberIdentifier}
+                  setCurrentView={setCurrentView}
+                  gameState={gameState}
+                  leaderboard={leaderboard}
+                />
+              )}
+            </>
           )}
         </div>
       )}

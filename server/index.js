@@ -266,8 +266,8 @@ app.get('/api/leaderboard', async (req, res) => {
 // --- SOCKETS ---
 let globalGameState = {
     status: 'GREEN',
-    round1: { isStarted: false, isPaused: false },
-    round2: { isStarted: false, isPaused: false }
+    round1: { isStarted: false, isPaused: false, startTime: null, pauseStartTime: null },
+    round2: { isStarted: false, isPaused: false, startTime: null, pauseStartTime: null }
 };
 
 const getSortedPlayers = async () => {
@@ -304,7 +304,19 @@ const getSortedPlayers = async () => {
 
 io.on('connection', (socket) => {
     socket.emit('gameUpdate', globalGameState);
-    socket.on('joinTeam', (teamId) => socket.join(teamId));
+    socket.on('joinTeam', async (teamId) => {
+        socket.join(teamId);
+
+        // Refresh puzzles on screen refresh if game is not finished/exploded
+        const player = await findTeam(teamId);
+        if (player && player.round1Progress.status === 'active' && !player.round1Progress.puzzles.some(p => p.solved)) {
+            player.round1Progress.puzzles = generatePuzzles();
+            if (!useMemoryFallback) {
+                await Player.findByIdAndUpdate(player._id, { 'round1Progress.puzzles': player.round1Progress.puzzles });
+            }
+            io.to(teamId).emit('teamUpdate', player);
+        }
+    });
 
     socket.on('toggleRedLight', (data) => {
         globalGameState.status = data.status;
@@ -321,22 +333,20 @@ io.on('connection', (socket) => {
             globalGameState[rKey].isPaused = false;
 
             const now = new Date();
+            globalGameState[rKey].startTime = now;
+
             const players = useMemoryFallback ? memoryPlayers : await Player.find({});
 
             for (let p of players) {
                 const progress = round === 1 ? p.round1Progress : p.round2Progress;
-                // Only set start time if not already set or if status is waiting?
-                // User said "when admin starts... 10 mins start for everyone". 
-                // This implies a synchronized start.
-                if (!progress.startTime) {
-                    progress.startTime = now;
-                    progress.status = 'active';
 
-                    if (!useMemoryFallback) {
-                        await Player.findByIdAndUpdate(p._id, {
-                            [round === 1 ? 'round1Progress' : 'round2Progress']: progress
-                        });
-                    }
+                progress.startTime = now;
+                progress.status = 'active';
+
+                if (!useMemoryFallback) {
+                    await Player.findByIdAndUpdate(p._id, {
+                        [round === 1 ? 'round1Progress' : 'round2Progress']: progress
+                    });
                 }
             }
             // Broadcast updates
@@ -402,14 +412,15 @@ io.on('connection', (socket) => {
         } else if (action === 'restart') {
             const now = new Date();
             if (round === 1) {
+                globalGameState.round1.startTime = now;
                 if (useMemoryFallback) {
                     memoryPlayers.forEach(p => {
                         p.round1Progress = {
                             puzzles: generatePuzzles(),
                             currentPuzzle: 0,
                             selectedModuleIndex: -1,
-                            roleSelection: p.round1Progress.roleSelection, // Keep roles or reset? User said "reset games", usually implies keep roles so they don't have to select again if it's a quick restart
-                            lives: 3,
+                            roleSelection: p.round1Progress.roleSelection,
+                            lives: p.round1Progress.lives || 3, // Preserve lives
                             status: 'active',
                             startTime: now,
                             endTime: null
@@ -424,7 +435,7 @@ io.on('connection', (socket) => {
                             currentPuzzle: 0,
                             selectedModuleIndex: -1,
                             roleSelection: p.round1Progress.roleSelection,
-                            lives: 3,
+                            lives: p.round1Progress.lives || 3, // Preserve lives
                             status: 'active',
                             startTime: now,
                             endTime: null
@@ -434,6 +445,7 @@ io.on('connection', (socket) => {
                     }
                 }
             } else if (round === 2) {
+                globalGameState.round2.startTime = now;
                 if (useMemoryFallback) {
                     memoryPlayers.forEach(p => {
                         p.round2Progress = {
@@ -501,17 +513,15 @@ io.on('connection', (socket) => {
                 currentPuzzle: 0,
                 selectedModuleIndex: -1,
                 roleSelection: player.round1Progress.roleSelection, // Maintain role selection
-                lives: 3,
+                lives: 3, // Reset lives to 3 for individual team reset
                 status: 'active',
-                startTime: new Date(),
+                startTime: globalGameState.round1.startTime || new Date(), // Use global start time if available
                 endTime: null
             };
-            player.score = 0; // Reset score for fresh start
 
             if (!useMemoryFallback) {
                 await Player.findByIdAndUpdate(player._id, {
-                    round1Progress: player.round1Progress,
-                    score: player.score
+                    round1Progress: player.round1Progress
                 });
             }
 
@@ -632,19 +642,19 @@ io.on('connection', (socket) => {
     });
 
     socket.on('adminResetTeam', async (teamId) => {
-        let player = await Player.findOne({ teamName: teamId });
+        let player = await findTeam(teamId);
         if (player) {
             player.round1Progress = {
                 puzzles: generatePuzzles(),
                 currentPuzzle: 0,
                 selectedModuleIndex: -1,
-                roleSelection: { member1: null, member2: null },
-                lives: 3,
+                roleSelection: player.round1Progress.roleSelection,
+                lives: player.round1Progress.lives, // Preserve lives
                 status: 'active',
-                startTime: null,
+                startTime: globalGameState.round1.startTime || null,
                 endTime: null
             };
-            await player.save();
+            if (!useMemoryFallback) await player.save();
             io.to(player._id.toString()).emit('teamUpdate', player);
             const sorted = await getSortedPlayers();
             io.emit('adminLeaderboardUpdate', sorted);

@@ -57,8 +57,8 @@ const RoleSelect = ({
                         transform: currentRole === 'defuser' ? 'scale(1.05)' : 'scale(1)'
                     }}>
                     <Bomb size={64} color="#00ff66" />
-                    <h3 style={{ marginTop: '1.5rem', mb: '0.5rem' }}>BOMB_DEFUSER</h3>
-                    <p style={{ fontSize: '0.7rem', color: '#666', mb: '1rem' }}>SITS AT THE BOMB CHASSIS</p>
+                    <h3 style={{ marginTop: '1.5rem', marginBottom: '0.5rem' }}>BOMB_DEFUSER</h3>
+                    <p style={{ fontSize: '0.7rem', color: '#666', marginBottom: '1rem' }}>SITS AT THE BOMB CHASSIS</p>
                     {currentRole === 'defuser' && <p className="green-text" style={{ fontSize: '0.8rem', marginTop: '1rem', fontWeight: 900 }}>ROLE_ASSIGNED</p>}
                 </div>
 
@@ -72,8 +72,8 @@ const RoleSelect = ({
                         transform: currentRole === 'giver' ? 'scale(1.05)' : 'scale(1)'
                     }}>
                     <Shield size={64} color="#00ff66" />
-                    <h3 style={{ marginTop: '1.5rem', mb: '0.5rem' }}>INSTRUCTION_GIVER</h3>
-                    <p style={{ fontSize: '0.7rem', color: '#666', mb: '1rem' }}>PROVIDES INTEL FROM MANUAL</p>
+                    <h3 style={{ marginTop: '1.5rem', marginBottom: '0.5rem' }}>INSTRUCTION_GIVER</h3>
+                    <p style={{ fontSize: '0.7rem', color: '#666', marginBottom: '1rem' }}>PROVIDES INTEL FROM MANUAL</p>
                     {currentRole === 'giver' && <p className="green-text" style={{ fontSize: '0.8rem', marginTop: '1rem', fontWeight: 900 }}>ROLE_ASSIGNED</p>}
                 </div>
             </div>
